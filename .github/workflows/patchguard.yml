@@ -1,44 +1,70 @@
-# COPY to .github/workflows/patchguard.yml in the C/C++ TARGET repository.
-# Replace OWNER/REPO@PINNED_COMMIT with the published, immutable PatchGuard SHA.
-# Adjust .patchguard/config.yaml to your target's paths, corpus, build and oracle.
-name: PatchGuard PR gate
+name: PatchGuard
+
 on:
   pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+
 jobs:
-  patchguard-security:
-    name: patchguard-security
+  patchguard:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Export trusted base source tree
+          persist-credentials: false
+
+      - name: Prepare source versions
         shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          mkdir -p .patchguard/base
-          git archive "$BASE_SHA" | tar -x -C .patchguard/base
-      - name: Validate candidate against base
-        uses: pooria1834/PatchGuard@90a78cd82d98a7c238ea393de2da6a4d5c74982f
-        env:
-          PATCHGUARD_BASE_REVISION: ${{ github.event.pull_request.base.sha }}
+
+          mkdir -p .patchguard/base/src
+          mkdir -p .patchguard/patched/src
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+
+          echo "Base commit: $BASE_SHA"
+          echo "Patched commit: $(git rev-parse HEAD)"
+
+          git archive "$BASE_SHA" | tar -x -C .patchguard/base/src
+          git archive HEAD | tar -x -C .patchguard/patched/src
+
+          echo "Source versions prepared successfully."
+
+      - name: Run PatchGuard
+        id: patchguard
+        uses: pooria1834/PatchGuard@1d493e1e2d7e641aa1f3709aec8c2aaaa625c39e
         with:
           config: .patchguard/config.yaml
           report-dir: artifacts/patchguard
-      - name: Upload concise report and one archive (even if blocked)
+          auto-regression-pr: 'true'
+          github-token: ${{ github.token }}
+
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: patchguard-pr-evidence
           if-no-files-found: warn
-          retention-days: 7
           path: |
             artifacts/patchguard/summary.md
             artifacts/patchguard/verdict.json
+            artifacts/patchguard/report.json
             artifacts/patchguard/evidence-index.md
+            artifacts/patchguard/evidence-index.json
             artifacts/patchguard/regression-candidates.md
+            artifacts/patchguard/regression-pr-preparation.json
+            artifacts/patchguard/regression-pr.json
             artifacts/patchguard/technical-evidence.zip
