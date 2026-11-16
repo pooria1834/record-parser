@@ -1,3 +1,23 @@
+- id: generated-2174be779da7-27333ab4b6f8-candidate-checked
+  kind: boundary
+  input: 2174be779da7.bin
+  expected_exit: 2
+  expected_stdout: generated-2174be779da7-27333ab4b6f8-candidate-checked.out
+  preserved_signature: 27333ab4b6f84f3b6b7829aff52ad888a2b136a996a9739d5c3f25c2f6537f29
+  input_sha256: 2174be779da73a02322fc6222a5923c88736dc8c7cbd1527f66a785f1c5d110f
+  witness_role: candidate
+  witness_mode: checked
+  args: []
+- id: generated-bc1017a41118-27333ab4b6f8-base-checked
+  kind: boundary
+  input: bc1017a41118.bin
+  expected_exit: 2
+  expected_stdout: generated-bc1017a41118-27333ab4b6f8-base-checked.out
+  preserved_signature: 27333ab4b6f84f3b6b7829aff52ad888a2b136a996a9739d5c3f25c2f6537f29
+  input_sha256: bc1017a411184cd676b225e7b9d7c52e6fa49af6b50101d7b9e0c194c9964fb9
+  witness_role: base
+  witness_mode: checked
+  args: []
 - id: generated-c4be785f2c87-27333ab4b6f8-base-checked
   kind: boundary
   input: c4be785f2c87.bin
@@ -16,3 +36,13 @@
   input_sha256: d823b84c4a2494146df31c21d06ff0b275166c24139ed0b72c1073a3e20ee7a3
   witness_role: base
   witness_mode: checked
+- id: generated-f207bacbc5dc-27333ab4b6f8-candidate-checked
+  kind: boundary
+  input: f207bacbc5dc.bin
+  expected_exit: 2
+  expected_stdout: generated-f207bacbc5dc-27333ab4b6f8-candidate-checked.out
+  preserved_signature: 27333ab4b6f84f3b6b7829aff52ad888a2b136a996a9739d5c3f25c2f6537f29
+  input_sha256: f207bacbc5dc4c343f1d398208262420688fc3f9bf2e79c902b5367922b85cf2
+  witness_role: candidate
+  witness_mode: checked
+  args: []
