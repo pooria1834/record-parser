@@ -18,11 +18,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Prepare source versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p .patchguard/base/src
+          mkdir -p .patchguard/patched/src
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+
+          echo "Base commit: $BASE_SHA"
+          echo "Patched commit: $(git rev-parse HEAD)"
+
+          git archive "$BASE_SHA" | tar -x -C .patchguard/base/src
+          git archive HEAD | tar -x -C .patchguard/patched/src
+
+          echo "Source versions prepared successfully."
 
       - name: Run PatchGuard
         id: patchguard
-        uses: pooria1834/PatchGuard@1d493e1e2d7e641aa1f3709aec8c2aaaa625c39e
+        uses: pooria1834/PatchGuard@NEW_COMMIT_SHA
         with:
           config: .patchguard/config.yaml
           report-dir: artifacts/patchguard
@@ -33,12 +56,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: patchguard-evidence
+          name: patchguard-pr-evidence
           if-no-files-found: warn
           path: |
             artifacts/patchguard/summary.md
             artifacts/patchguard/verdict.json
             artifacts/patchguard/report.json
+            artifacts/patchguard/evidence-index.md
+            artifacts/patchguard/evidence-index.json
+            artifacts/patchguard/regression-candidates.md
             artifacts/patchguard/regression-pr-preparation.json
             artifacts/patchguard/regression-pr.json
             artifacts/patchguard/technical-evidence.zip
