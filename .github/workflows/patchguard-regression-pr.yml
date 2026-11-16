@@ -1,5 +1,5 @@
 # Copy to record-parser/.github/workflows/patchguard-regression-pr.yml on main.
-# Replace BOTH __PATCHGUARD_SHA__ entries with the same pinned action SHA.
+
 name: PatchGuard regression PR
 
 on:
@@ -13,14 +13,17 @@ permissions:
 
 jobs:
   verify:
-    # Forks and push/dispatch runs do not get a publishing workflow. This job
-    # also runs when the triggering PatchGuard job FAILED (exit 10/20/etc.).
     if: >-
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.pull_requests[0].number > 0
+
     runs-on: ubuntu-latest
     timeout-minutes: 35
+
+    env:
+      PATCHGUARD_WORKSPACE: ${{ github.workspace }}
+
     steps:
       - name: Checkout trusted main (no credentials persisted)
         uses: actions/checkout@v4
@@ -74,30 +77,49 @@ jobs:
           python3 "$RUNNER_TEMP/patchguard-tool/scripts/workflow_run_sources.py" \
             --config .patchguard/config.yaml \
             --archive artifacts/patchguard/technical-evidence.zip \
-            --pr-number "$PR_NUMBER" --expected-head-sha "$HEAD_SHA"
+            --pr-number "$PR_NUMBER" \
+            --expected-head-sha "$HEAD_SHA"
 
       - name: Reproduce witnesses with no network or write token
         shell: bash
         run: |
           set -euo pipefail
           VERIFY="$RUNNER_TEMP/patchguard-verification"
-          mkdir -p "$VERIFY/artifacts/patchguard" "$VERIFY/reviewed" tests/regression/reviewed
+
+          mkdir -p \
+            "$VERIFY/artifacts/patchguard" \
+            "$VERIFY/reviewed" \
+            tests/regression/reviewed
+
           cp artifacts/patchguard/report.json artifacts/patchguard/technical-evidence.zip \
             "$VERIFY/artifacts/patchguard/"
+
           docker build -q -t patchguard-verification "$RUNNER_TEMP/patchguard-tool"
-          docker run --rm --network none --read-only --cap-drop ALL \
-            --security-opt no-new-privileges --memory 2g --memory-swap 2g \
-            --cpus 2 --pids-limit 256 \
+
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --memory 2g \
+            --memory-swap 2g \
+            --cpus 2 \
+            --pids-limit 256 \
             --tmpfs /tmp:rw,nosuid,noexec,size=256m \
             --user "$(id -u):$(id -g)" \
-            -e HOME=/tmp -e PATCHGUARD_WORKSPACE=/work -e PYTHONPATH=/tool \
+            -e HOME=/tmp \
+            -e PATCHGUARD_WORKSPACE=/work \
+            -e PYTHONPATH=/tool \
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/work,readonly" \
             --mount "type=bind,source=$VERIFY/artifacts,target=/work/artifacts" \
             --mount "type=bind,source=$VERIFY/reviewed,target=/work/tests/regression/reviewed" \
             --mount "type=bind,source=$RUNNER_TEMP/patchguard-tool,target=/tool,readonly" \
-            -w /work patchguard-verification \
+            -w /work \
+            patchguard-verification \
             python3 /tool/scripts/batch_promote.py \
-            --config .patchguard/config.yaml --report-dir artifacts/patchguard --verify-witness
+            --config .patchguard/config.yaml \
+            --report-dir artifacts/patchguard \
+            --verify-witness
 
       - name: Export canonical, verified fixtures as data only
         shell: bash
@@ -110,7 +132,8 @@ jobs:
             --archive artifacts/patchguard/technical-evidence.zip \
             --plan "$RUNNER_TEMP/patchguard-verification/artifacts/patchguard/regression-pr-preparation.json" \
             --out "$RUNNER_TEMP/verified-handoff" \
-            --run-id "$SOURCE_RUN" --run-attempt "$SOURCE_ATTEMPT"
+            --run-id "$SOURCE_RUN" \
+            --run-attempt "$SOURCE_ATTEMPT"
 
       - name: Upload verified regression data for privileged publisher
         uses: actions/upload-artifact@v4
@@ -124,9 +147,14 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     permissions:
       contents: write
       pull-requests: write
+
+    env:
+      PATCHGUARD_WORKSPACE: ${{ github.workspace }}
+
     steps:
       - name: Checkout trusted main without persisted credentials
         uses: actions/checkout@v4
@@ -167,7 +195,8 @@ jobs:
             --config .patchguard/config.yaml \
             --handoff "$RUNNER_TEMP/verified-handoff" \
             --report-dir artifacts/patchguard \
-            --source-run-id "$SOURCE_RUN" --source-run-attempt "$SOURCE_ATTEMPT"
+            --source-run-id "$SOURCE_RUN" \
+            --source-run-attempt "$SOURCE_ATTEMPT"
 
       - name: Open a single DRAFT PR against main
         shell: bash
