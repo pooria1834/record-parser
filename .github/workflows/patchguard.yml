@@ -1,3 +1,5 @@
+# Copy to record-parser/.github/workflows/patchguard.yml
+# Replace __PATCHGUARD_SHA__ with the SHA of your NEW PatchGuard commit.
 name: PatchGuard
 
 on:
@@ -7,57 +9,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   patchguard:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
+      - name: Checkout untrusted source (without credentials)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Prepare source versions
+      - name: Prepare exact baseline source tree
         shell: bash
         run: |
           set -euo pipefail
-
-          mkdir -p .patchguard/base/src
-          mkdir -p .patchguard/patched/src
-
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          rm -rf .patchguard/base
+          mkdir -p .patchguard/base
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
             BASE_SHA="$(git rev-parse HEAD^)"
           fi
+          # The trusted config expects .patchguard/base/src/record_parser.c.
+          git archive "$BASE_SHA" src | tar -x -C .patchguard/base
+          printf 'PATCHGUARD_BASE_REVISION=%s\n' "$BASE_SHA" >> "$GITHUB_ENV"
+          test -f .patchguard/base/src/record_parser.c
+          test -f src/record_parser.c
 
-          echo "Base commit: $BASE_SHA"
-          echo "Patched commit: $(git rev-parse HEAD)"
-
-          git archive "$BASE_SHA" | tar -x -C .patchguard/base
-          git archive HEAD | tar -x -C .patchguard/patched
-
-          echo "Source versions prepared successfully."
-
-      - name: Run PatchGuard
+      - name: Run PatchGuard (no write token)
         id: patchguard
-        uses: pooria1834/PatchGuard@1d493e1e2d7e641aa1f3709aec8c2aaaa625c39e
+        uses: pooria1834/PatchGuard@__PATCHGUARD_SHA__
         with:
           config: .patchguard/config.yaml
           report-dir: artifacts/patchguard
-          auto-regression-pr: 'true'
-          github-token: ${{ github.token }}
+          auto-regression-pr: 'false'
 
-      - name: Upload evidence
+      - name: Upload evidence even when PatchGuard finds a failure
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: patchguard-pr-evidence
           if-no-files-found: warn
+          retention-days: 14
           path: |
             artifacts/patchguard/summary.md
             artifacts/patchguard/verdict.json
@@ -65,6 +60,4 @@ jobs:
             artifacts/patchguard/evidence-index.md
             artifacts/patchguard/evidence-index.json
             artifacts/patchguard/regression-candidates.md
-            artifacts/patchguard/regression-pr-preparation.json
-            artifacts/patchguard/regression-pr.json
             artifacts/patchguard/technical-evidence.zip
