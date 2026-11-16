@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pooria1834/PatchGuard
-          ref: __PATCHGUARD_SHA__
+          ref: c28873ab7d3e319262791e913fd27ce156d3f4a7
           path: .patchguard-tool
           persist-credentials: false
 
@@ -139,7 +139,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pooria1834/PatchGuard
-          ref: __PATCHGUARD_SHA__
+          ref: c28873ab7d3e319262791e913fd27ce156d3f4a7
           path: .patchguard-tool
           persist-credentials: false
 

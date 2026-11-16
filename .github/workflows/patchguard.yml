@@ -40,7 +40,7 @@ jobs:
 
       - name: Run PatchGuard (no write token)
         id: patchguard
-        uses: pooria1834/PatchGuard@__PATCHGUARD_SHA__
+        uses: pooria1834/PatchGuard@c28873ab7d3e319262791e913fd27ce156d3f4a7
         with:
           config: .patchguard/config.yaml
           report-dir: artifacts/patchguard
