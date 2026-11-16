@@ -1,5 +1,3 @@
-# Copy to record-parser/.github/workflows/patchguard.yml
-# Replace __PATCHGUARD_SHA__ with the SHA of your NEW PatchGuard commit.
 name: PatchGuard
 
 on:
@@ -13,14 +11,9 @@ permissions:
 
 jobs:
   patchguard:
-    if: >-
-     !(
-       github.event_name == 'pull_request' &&
-       github.event.pull_request.user.login == 'github-actions[bot]' &&
-       startsWith(github.head_ref, 'patchguard/regressions-')
-     )
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]' || !startsWith(github.head_ref, 'patchguard/regressions-') }}
     runs-on: ubuntu-latest
-    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout untrusted source (without credentials)
         uses: actions/checkout@v4
@@ -32,16 +25,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           rm -rf .patchguard/base
           mkdir -p .patchguard/base
+
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
             BASE_SHA="$(git rev-parse HEAD^)"
           fi
+
           # The trusted config expects .patchguard/base/src/record_parser.c.
           git archive "$BASE_SHA" src | tar -x -C .patchguard/base
+
           printf 'PATCHGUARD_BASE_REVISION=%s\n' "$BASE_SHA" >> "$GITHUB_ENV"
+
           test -f .patchguard/base/src/record_parser.c
           test -f src/record_parser.c
 
