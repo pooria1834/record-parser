@@ -38,8 +38,8 @@ jobs:
           echo "Base commit: $BASE_SHA"
           echo "Patched commit: $(git rev-parse HEAD)"
 
-          git archive "$BASE_SHA" | tar -x -C .patchguard/base/src
-          git archive HEAD | tar -x -C .patchguard/patched/src
+          git archive "$BASE_SHA" | tar -x -C .patchguard/base
+          git archive HEAD | tar -x -C .patchguard/patched
 
           echo "Source versions prepared successfully."
 
